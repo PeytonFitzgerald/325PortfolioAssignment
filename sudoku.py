@@ -27,27 +27,97 @@ class Board:
         self.__game_board = self.generate_board()
         
     def generate_board(self):
+        """Generates a valid 9x9 sudoku board, and then removes values from it to make sure its ready to play.
+         
+        Returns:
+            No return - stored in self.__game_board
+        """        
         board_not_ready = True
         # temp generation of board
         board = [[' ' for _ in range(9)] for _ in range(9)]
         board_size = 81
         numbers =[1,2,3,4,5,6,7,8,9]
-
+        square_dict = {
+            # top squares
+            'square1': [board[n][0:3] for n in range(0,3)],
+            'square2': [board[n][3:6] for n in range(0,3)],
+            'square3': [board[n][6:9] for n in range(0,3)],
+            # middle squares
+            'square4': [board[n][0:3] for n in range(3,6)],
+            'square5': [board[n][3:6] for n in range(3,6)],
+            'square6': [board[n][6:9] for n in range(3,6)],
+            # bottom squares
+            'square7': [board[n][0:3] for n in range(6,9)],
+            'square8': [board[n][3:6] for n in range(6,9)],
+            'square9': [board[n][6:9] for n in range(6,9)]
+        }
         while board_not_ready:
+            # loop through each cell in the board to give it a value
             for cell in range(0,81):
+                # assing appropriate row and col for this cell's iteration
                 row=cell//9
                 col=cell%9
+                
+                # make sure it's empty 
                 if board[row][col] == ' ':
-                    shuffle(numberList)
+                    shuffle(numbers)
+                    # look through each of the potential numbers, select one that's not in..
                     for number in numbers:
+                        # this row...
+                        print("number is + " + str(number) + " and its row is " + str(row) + " and its row contents are the following:")
+                        print(board[row])
                         if number not in board[row]:
-                            if number not in board[col]:
+                            # or this column...
+                            for x in range(0,9):
+                                if number != board[x][col]:
+                                    
+                                    
+                            # one of the three left squares       
+                            if col < 3:
+                                if row < 3:
+                                    square = square_dict['square1']
+                                elif row < 6:
+                                    square = square_dict['square4']
+                                else:
+                                    square = square_dict['square7']
+                                    # one of the middle three squares
+                            elif col < 6:
+                                if row < 3:
+                                    square = square_dict['square2']
+                                elif row < 6:
+                                    square = square_dict['square5']
+                                else:
+                                    square = square_dict['square8']
+                                    # one of the right three squares 
+                            else:
+                                if row < 3:
+                                        square = square_dict['square3']
+                                elif row < 6:
+                                    square = square_dict['square6']
+                                else:
+                                    square = square_dict['square9']
+                            if number not in square:
+                                board[row][col] = number
+                                        
+                                """
+                                    if col < 3:
+                                        cur_square = [board[cell][0:3]]
+                                    elif col < 6:
+                                        cur_square = [board[cell][3:6] for cell in range(0,3)]
+                                    else:
+                                        cur_square = [board[cell][6:9]]
+                                """
+                                
+                                
                                 
             
-            if self.verify_solution(board):
+            if self.verify_solution(board) and (' ' not in board):
+                print("board legit")
                 board_not_ready = False
-                
-        return board
+                return board 
+            else("board is not legit, trying again")
+            
+        
     
     def get_board(self):
         return self.__game_board
@@ -86,7 +156,7 @@ class Game:
         return self.__window
         
     def print_board(self):
-        print(self.__board.get_board())
+        print(np.matrix(self.__board.get_board()))
         
     def play_game(self):
         pygame.display.set_caption("Sudoku Game")
@@ -109,6 +179,7 @@ class Game:
     
 def main():
     game_window = Game()
+    game_window.print_board()
     game_window.play_game()
     
 if __name__ == "__main__":

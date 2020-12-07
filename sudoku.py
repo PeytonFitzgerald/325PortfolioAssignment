@@ -40,6 +40,7 @@ CELL_SIZE = 60
 class Board:
     def __init__(self):
         self.__game_board = [[' ' for _ in range(9)] for _ in range(9)]
+        self.__reference_board = []
         self.__playable_game_board = []
         self.__square_dict = {}
 
@@ -60,10 +61,20 @@ class Board:
         }
         return square_dict
 
+    def get_board(self):
+        return self.__game_board
+
+    def get_reference_board(self):
+        return self.__reference_board
+
+    def get_playing_board(self):
+        return self.__playable_game_board
+
     def generate_board(self):
         self.fill_board(self.__game_board)
         # print(np.matrix(self.__game_board))
         self.remove_numbers('Easy')
+        self.__reference_board = copy.deepcopy(self.__playable_game_board)
         # print("now it's ready for play")
         # print(np.matrix(self.__playable_game_board))
         return None
@@ -169,11 +180,7 @@ class Board:
 
 
 
-    def get_board(self):
-        return self.__game_board
 
-    def get_playing_board(self):
-        return self.__playable_game_board
 
     def get_board_state(self, num, row, col, arg_board):
         board = copy.deepcopy(arg_board)
@@ -188,6 +195,27 @@ class Game:
         self.__window = pygame.display.set_mode(WINDOW_SIZE)
         self.__board = Board()
         self.__playing_board = []
+        self.__reference_board = []
+        self.__win_state = False
+
+    def set_win_state(self, state):
+        self.__win_state = state
+
+    def set_playing_board(self, board):
+        self.__playing_board = board
+        return
+
+    def set_reference_board(self, board):
+        self.__reference_board = board
+        return
+
+    def get_current_window(self):
+        return self.__window
+
+    def print_board(self):
+        print(np.matrix(self.__playing_board))
+        return None
+
 
     def draw_grid_lines(self, window):
         for small_x_line in range(0, WIDTH, CELL_SIZE):
@@ -206,12 +234,16 @@ class Game:
         for x in range(9):
             for y in range(9):
                 cell_val = board[x][y]
+                if board[x][y] == self.__reference_board[x][y]:
+                    color = BLACK
+                else:
+                    color = BLUE
                 if cell_val != ' ':
-                    self.fill_cell(cell_val, (x * CELL_SIZE), (y * CELL_SIZE))
+                    self.fill_cell(cell_val, (x * CELL_SIZE), (y * CELL_SIZE), color)
                     pygame.display.update()
 
-    def fill_cell(self, number, x_cord, y_cord):
-        cellValue = CELLFONT.render('%s' % (number), True, BLACK)
+    def fill_cell(self, number, x_cord, y_cord, color):
+        cellValue = CELLFONT.render('%s' % (number), True, color)
         rect = cellValue.get_rect()
         rect.topleft = (y_cord, x_cord)
         self.__window.blit(cellValue, rect)
@@ -220,35 +252,25 @@ class Game:
     def enter_number(self, number, y_cord, x_cord):
         x = int(x_cord / CELL_SIZE)
         y = int(y_cord / CELL_SIZE)
+        reference_board = self.__reference_board
         board = self.__playing_board
-        if board[x][y] == ' ' and self.__board.is_valid_placement(x, y, number, board):
-            print("empty")
-            print("trying to put it at row " + str(x) + " and column " + str(y))
+        if (reference_board[x][y] == ' ') and self.__board.is_valid_placement(x, y, number, board):
             if self.__board.get_board_state(number, x, y, board):
+                finished = True
                 board[x][y] = number
-                print("valid")
-            else:
-                print("invalid number")
-        else:
-            print(str(board[x][y]))
-            print("not empty")
+                for row in range(9):
+                    for col in range(9):
+                        if board[row][col] == ' ':
+                            finished = False
+                if finished:
+                    print("board full")
         return None
 
-    def set_playing_board(self, board):
-        self.__playing_board = board
-        return None
-
-    def get_current_window(self):
-        return self.__window
 
     def select_cell(self, x, y):
         cell_x = ((x * 9) / WIDTH) * CELL_SIZE
         cell_y = ((y * 9) / HEIGHT) * CELL_SIZE
         pygame.draw.rect(self.__window, BLUE, (cell_x, cell_y, CELL_SIZE, CELL_SIZE), 5)
-        return None
-
-    def print_board(self):
-        print(np.matrix(self.__playing_board))
         return None
 
     def refresh_screen(self):
@@ -263,6 +285,7 @@ class Game:
         pygame.display.set_caption("Sudoku Game")
         window = self.get_current_window()
         self.set_playing_board(self.__board.get_playing_board())
+        self.set_reference_board(self.__board.get_reference_board())
         self.print_board()
 
         current_selection = [0, 0]
@@ -275,6 +298,7 @@ class Game:
                 if event.type == QUIT:
                     pygame.quit()
                     sys.exit()
+
 
                 key_pressed = pygame.key.get_pressed()
                 if key_pressed[pygame.K_LEFT]:
@@ -314,59 +338,49 @@ class Game:
                     self.select_cell(current_selection[0], current_selection[1])
 
                 elif key_pressed[pygame.K_1]:
-                    print("it's 1")
                     self.refresh_screen()
                     self.enter_number(1, current_selection[0], current_selection[1])
                     self.select_cell(current_selection[0], current_selection[1])
 
                 elif key_pressed[pygame.K_2]:
-                    print("it's 2")
                     self.refresh_screen()
                     self.enter_number(2, current_selection[0], current_selection[1])
                     self.select_cell(current_selection[0], current_selection[1])
 
                 elif key_pressed[pygame.K_3]:
-                    print("it's 3")
                     self.refresh_screen()
                     self.enter_number(3, current_selection[0], current_selection[1])
                     self.select_cell(current_selection[0], current_selection[1])
 
                 elif key_pressed[pygame.K_4]:
-                    print("it's 4")
                     self.refresh_screen()
                     self.enter_number(4, current_selection[0], current_selection[1])
                     self.select_cell(current_selection[0], current_selection[1])
 
                 elif key_pressed[pygame.K_5]:
-                    print("it's 5")
                     self.refresh_screen()
                     self.enter_number(5, current_selection[0], current_selection[1])
                     self.select_cell(current_selection[0], current_selection[1])
 
                 elif key_pressed[pygame.K_6]:
-                    print("it's 6")
                     self.refresh_screen()
                     self.enter_number(6, current_selection[0], current_selection[1])
                     self.select_cell(current_selection[0], current_selection[1])
 
                 elif key_pressed[pygame.K_7]:
-                    print("it's 7")
                     self.refresh_screen()
                     self.enter_number(7, current_selection[0], current_selection[1])
                     self.select_cell(current_selection[0], current_selection[1])
 
                 elif key_pressed[pygame.K_8]:
-                    print("it's 8")
                     self.refresh_screen()
                     self.enter_number(8, current_selection[0], current_selection[1])
                     self.select_cell(current_selection[0], current_selection[1])
 
                 elif key_pressed[pygame.K_9]:
-                    print("it's 9")
                     self.refresh_screen()
                     self.enter_number(9, current_selection[0], current_selection[1])
                     self.select_cell(current_selection[0], current_selection[1])
-
 
                 # if key_pressed[pygame.K_RETURN]:
                 # print("enter pressed")

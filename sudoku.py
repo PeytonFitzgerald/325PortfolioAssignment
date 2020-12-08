@@ -45,12 +45,14 @@ class Board:
         self.__square_dict = {}
         self.__solution_count = 0
 
+
     def get_squares(self, board):
         """
         Given a 9x9 board, returns the squares for that board.
         :param board: 9x9 Sudoku board
         :return: Dict of squares for a 9x9 sudoku board
         """
+        # simply use list comprehension to build dict values for 3x3 grids. (9 in total)
         square_dict = {
             # top squares
             'square1': [board[n][0:3] for n in range(0, 3)],
@@ -94,19 +96,8 @@ class Board:
         and uses the resulting board as the reference/playing boards
         :return:
         """
-        print(self.__game_board)
         self.__game_board = [[' ' for _ in range(9)] for _ in range(9)]
-        print(self.__game_board)
-        if difficulty == 1:
-            difficulty = 'Easy'
-        elif difficulty == 2:
-            difficulty = 'Medium'
-        else:
-            difficulty = 'Hard'
-        print(difficulty)
         self.fill_board(self.__game_board)
-        print("above just filled")
-        print(self.__game_board)
         # print(np.matrix(self.__game_board))
         self.remove_numbers(difficulty)
         self.__reference_board = copy.deepcopy(self.__playable_game_board)
@@ -123,21 +114,32 @@ class Board:
         :return: No return
         """
         numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        # for each cell in the grid
         for cell in range(0, 81):
+            # set appropriate row and col
             row = cell // 9
             col = cell % 9
+            # if that cell is empty
             if board[row][col] == ' ':
+                # shuffle numbers
                 shuffle(numbers)
                 for number in numbers:
+                    # iterate through our numbers until we find one that is valid
                     if self.is_valid_placement(row, col, number, board):
+                        # if valid place it there
                         board[row][col] = number
+                        # while there are empty cells left
                         if self.next_empty():
+                            # recursively call and fill
                             if self.fill_board(board):
+                                # if fillable on that recursive path, return true
                                 return True
                         else:
+                            # base case - no more empty cells after this
                             return True
                 break
         board[row][col] = ' '
+        # not fillable, we return false
         return False
 
     def solver(self, board):
@@ -148,6 +150,8 @@ class Board:
         :param board: board to be filled
         :return: No return
         """
+        # same as above, just with a counter. For some reason, whenever I included
+        # self__solution_count += 1 in the above, it didn't work. I have no idea why.
         numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]
         for cell in range(0, 81):
             row = cell // 9
@@ -157,7 +161,7 @@ class Board:
                     if self.is_valid_placement(row, col, number, board):
                         board[row][col] = number
 
-                        if self.next_empty():
+                        if self.next_empty(board):
                             if self.solver(board):
                                 return True
                         else:
@@ -167,6 +171,15 @@ class Board:
         board[row][col] = ' '
         return False
 
+    def solve_outside_board(self, board):
+        """
+        Takes a 9x9 sudoku board as input and r uns it through the solver member function
+        :param board: board to be solved
+        :return: Solved board
+        """
+        self.solver(board)
+        return board
+
     def remove_numbers(self, difficulty):
         """
         Removes values from a solved sudoku board.
@@ -174,19 +187,17 @@ class Board:
         :return:
         """
         self.__playable_game_board = copy.deepcopy(self.__game_board)
-        print(self.__game_board)
         empty_num = 0
         board = self.__playable_game_board
-        if difficulty == 'Easy':
-            empty_size = 36
-        elif difficulty == 'Medium':
+        if difficulty == 1:
+            empty_size = 32
+        elif difficulty == 2:
             empty_size = 42
+        elif difficulty == 3:
+            empty_size = 50
         else:
-            empty_size = 46
-
-        empty_size = 1
+            empty_size = 20
         while empty_size > 0:
-            print(np.matrix(board))
             random_row = randint(0, 8)
             random_column = randint(0, 8)
             other_row = int(8-random_row)
@@ -204,7 +215,6 @@ class Board:
                 if self.__solution_count == 1:
                     board[random_row][random_column] = ' '
                     empty_size -= 1
-                    print(empty_size)
             # make another test board copy
             test_board = copy.deepcopy(board)
             if test_board[other_row][other_column] != ' ':
@@ -217,23 +227,15 @@ class Board:
                     board[other_row][other_column] = ' '
                     empty_size -= 1
                     empty_num += 1
-        """
-            if board[random_row][random_column] != ' ':
-                board[random_row][random_column] = ' '
-                if board[random_row][random_column] != ' ':
-                    board[8 - random_row][8 - random_column] = ' '
-                    empty_size -= 2
-                else:
-                    empty_size -= 1
-        """
         return None
 
-    def next_empty(self):
+    def next_empty(self, board=None):
         """
         Check for recursive function. Returns coords or None depending on state of board.
         :return: None if no empty values remain, otherwise the coords of an empty cell/True
         """
-        board = self.get_board()
+        if board is None:
+            board = self.get_board()
         coords = []
         for row in range(9):
             for column in range(9):
@@ -332,6 +334,8 @@ class Game:
         self.__reference_board = []
         self.__difficulty = 1
         self.__win_state = False
+        self.__cheated = False
+        self.__win_image = pygame.image.load("win.png")
 
     def set_win_state(self, state):
         """
@@ -383,11 +387,13 @@ class Game:
         :param window: Current pygame window
         :return: None
         """
+        # 1x1 Cell grid lines
         for small_x_line in range(0, WIDTH, CELL_SIZE):
             pygame.draw.line(window, GREY, (small_x_line, 0), (small_x_line, HEIGHT))
         for small_y_line in range(0, HEIGHT, CELL_SIZE):
             pygame.draw.line(window, GREY, (0, small_y_line), (WIDTH, small_y_line))
 
+        # 3x3 square grid lines
         for big_x_line in range(0, WIDTH, SECTION_SIZE):
             pygame.draw.line(window, BLACK, (big_x_line, 0), (big_x_line, HEIGHT))
         for big_y_line in range(0, HEIGHT, SECTION_SIZE):
@@ -404,8 +410,10 @@ class Game:
             for y in range(9):
                 cell_val = board[x][y]
                 if board[x][y] == self.__reference_board[x][y]:
+                    # color clues black
                     color = BLACK
                 else:
+                    # color user inputs blue
                     color = BLUE
                 if cell_val != ' ':
                     self.fill_cell(cell_val, (x * CELL_SIZE), (y * CELL_SIZE), color)
@@ -420,6 +428,8 @@ class Game:
         :param color: Color that the number should be drawn with
         :return: None
         """
+        # use x_cord and y_cord as reference to the location on the screen a given
+        # cell is being rendered. Then, render that cell value appropriately on the window
         cellValue = CELLFONT.render('%s' % (number), True, color)
         rect = cellValue.get_rect()
         rect.topleft = (y_cord, x_cord)
@@ -437,8 +447,10 @@ class Game:
         # playing board array
         x = int(x_cord / CELL_SIZE)
         y = int(y_cord / CELL_SIZE)
-        board = self.__playing_board
-        board[x][y] = ' '
+        if self.__reference_board[x][y] == ' ':
+            # only clear numbers that the user has entered, not clues
+            board = self.__playing_board
+            board[x][y] = ' '
 
 
     def enter_number(self, number, y_cord, x_cord):
@@ -454,10 +466,8 @@ class Game:
         reference_board = self.__reference_board
         board = self.__playing_board
         if (reference_board[x][y] == ' ') and self.__board.is_valid_placement(x, y, number, board):
-            print('1')
             # if self.__board.is_valid_placement(number, x, y, board):
             if 1 == 1:
-                print('2')
                 finished = True
                 board[x][y] = number
                 for row in range(9):
@@ -482,6 +492,14 @@ class Game:
         pygame.draw.rect(self.__window, BLUE, (cell_x, cell_y, CELL_SIZE, CELL_SIZE), 5)
         return None
 
+    def cheat(self):
+        """"""
+        """Calls on the Board class's fill method to instantly fill a given board"""
+        pygame.time.delay(1000)
+        self.__board.solve_outside_board(self.__playing_board)
+        self.__cheated = True
+
+
     def refresh_screen(self):
         """
         Refereshes the content of the current game window. Fills it with white, fills the grid based on the game board,
@@ -495,10 +513,17 @@ class Game:
         return None
 
     def display_victory(self):
+        """
+        Displays the victory image on the screen
+        """
         window = self.get_current_window()
-        window.fill(BLUE)
+        window.fill(WHITE)
+        self.__window.blit(self.__win_image, (WIDTH*.15, HEIGHT*.005))
 
     def new_game(self):
+        """
+        Starts a new game. Creates a new board based on the game object's current difficulty.
+        """
         self.__board.generate_board(self.__difficulty)
         self.set_playing_board(self.__board.get_playing_board())
         self.set_reference_board(self.__board.get_reference_board())
@@ -511,8 +536,7 @@ class Game:
         """
         self.new_game()
         pygame.display.set_caption("Sudoku Game")
-        #window = self.get_current_window()
-        self.print_board()
+        window = self.get_current_window()
 
         self.refresh_screen()
 
@@ -527,14 +551,59 @@ class Game:
 
                 key_pressed = pygame.key.get_pressed()
 
-                if self.__win_state:
-                    self.display_victory()
+                if self.__cheated:
                     if key_pressed[pygame.K_RETURN]:
+                        self.__cheated = False
+                        self.__win_state = True
+
+                elif self.__win_state:
+                    self.display_victory()
+                    # check for difficulty repeat
+                    if key_pressed[pygame.K_RETURN]:
+                        # screen to display if user has filled out the board. If they press enter, the game begins again
                         self.set_win_state(False)
                         self.new_game()
                         self.refresh_screen()
+                        current_selection = [0, 0]
+
+                    # check if user wants to try another difficulty
+                    if key_pressed[pygame.K_0]:
+                        self.set_difficulty(0)
+                        self.set_win_state(False)
+                        self.new_game()
+                        self.refresh_screen()
+                        current_selection = [0, 0]
+
+                    if key_pressed[pygame.K_1]:
+                        self.set_difficulty(1)
+                        self.set_win_state(False)
+                        self.new_game()
+                        self.refresh_screen()
+                        current_selection = [0, 0]
+
+                    if key_pressed[pygame.K_2]:
+                        self.set_difficulty(2)
+                        self.set_win_state(False)
+                        self.new_game()
+                        self.refresh_screen()
+                        current_selection = [0, 0]
+
+                    if key_pressed[pygame.K_3]:
+                        self.set_difficulty(3)
+                        self.set_win_state(False)
+                        self.new_game()
+                        self.refresh_screen()
+                        current_selection = [0, 0]
+
+
+
                 else:
 
+                    # ----------------------
+                    # General movement keys. Moves the blue rectangle signifying the users selected cell based on
+                    # the arrow key entered
+                    # current_selection[0] is the x coord, current_selection[1] is the y coord
+                    # ------------------------
                     if key_pressed[pygame.K_LEFT]:
                         movement = current_selection[0] - CELL_SIZE
                         if movement < 0:
@@ -571,11 +640,18 @@ class Game:
                         self.refresh_screen()
                         self.select_cell(current_selection[0], current_selection[1])
 
+                    # -------------
+                    # For each of the below, if a number is entered, update the game's board to reflect it's been
+                    # entered if it was valid, and then refresh the screen accordingly
+                    # -------------
+
+                     # if '1' pressed
                     elif key_pressed[pygame.K_1]:
                         self.refresh_screen()
                         self.enter_number(1, current_selection[0], current_selection[1])
                         self.select_cell(current_selection[0], current_selection[1])
 
+                    # if '2' pressed
                     elif key_pressed[pygame.K_2]:
                         self.refresh_screen()
                         self.enter_number(2, current_selection[0], current_selection[1])
@@ -629,27 +705,43 @@ class Game:
                         self.refresh_screen()
                         self.select_cell(current_selection[0], current_selection[1])
                     # if key_pressed[pygame.K_RETURN]:
-                    # print("enter pressed")
+
+                    elif key_pressed[pygame.K_s]:
+                        self.cheat()
+                        self.refresh_screen()
+                        self.select_cell(current_selection[0], current_selection[1])
+                        cheated = True
 
             pygame.display.update()
             GAMECLOCK.tick(60)
 
 
 def main():
-    difficulties = [1, 2, 3]
+    difficulties = ['0', '1', '2', '3']
     difficulty = 1
     no_input = True
     while no_input:
-        difficulty = int(input("What difficulty, type 1 for easy, 2 for medium, 3 for hard"))
+        difficulty = input("What difficulty? Type 0 for super easy puzzles. Or, you can type 1 for easier puzzles, 2 for normal puzzles, or 3 for harder puzzles")
         if difficulty in difficulties:
             no_input = False
         else:
-            print("Invalid input. Please enter either '1', '2', or '3'")
+            print("Invalid input. Please enter either '0', '1', '2', or '3'")
             print('\n')
+    difficulty = int(difficulty)
+    print('\n')
+    print('\n')
+    print('\n')
+    print('\n')
+    print("Generating game, if the window doesn't pop up automatically please look at your task bar at the bottom of the screen")
+    print('\n')
+    print('Game Instructions (also in README)')
+    print("Use arrow keys to move around the grid.")
+    print("Type a number to enter a number into an empty grid cell")
+    print("Clear a grid cell by pressing the escape key. NOTE: You cannot clear a cell with a black colored number")
+    print("Press 'S' at any time to cheat and instantly solve the board.) Afterwards, press Enter at any time to see the win screen and then start a new game")
     game = Game()
     game.set_difficulty(difficulty)
     game.play_game()
-
 
 if __name__ == "__main__":
     main()
